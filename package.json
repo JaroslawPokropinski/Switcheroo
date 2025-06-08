@@ -32,7 +32,7 @@
     "start:preload": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
     "test": "jest",
-    "clean": "rimraf **/node_modules"
+    "clean": "rimraf node_modules && rimraf release/app/node_modules && rimraf src/node_modules && rimraf .erb/node_modules"
   },
   "browserslist": [
     "extends browserslist-config-erb"

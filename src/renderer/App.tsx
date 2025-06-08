@@ -1,5 +1,5 @@
 import { Checkbox, Input, Select } from 'antd';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Config } from '../types';
 
 const displayOptions = [
@@ -9,14 +9,35 @@ const displayOptions = [
   { label: 'Display Port 2', value: 0x10 },
 ];
 
+/**
+ * Create electron accelerator string from the keyboard event.
+ */
+function getAccelerator(keyEvent: React.KeyboardEvent<HTMLInputElement>) {
+  const resultArr: string[] = [];
+
+  if (keyEvent.ctrlKey || keyEvent.metaKey) {
+    resultArr.push('CmdOrCtrl');
+  }
+
+  if (keyEvent.altKey) {
+    resultArr.push('Alt');
+  }
+
+  if (keyEvent.shiftKey) {
+    resultArr.push('Shift');
+  }
+
+  if (!resultArr.includes(keyEvent.key)) {
+    resultArr.push(keyEvent.key);
+  }
+
+  return resultArr.join('+');
+}
+
 export default function App() {
   const [displays, setDisplays] = useState<string[]>();
-  // const [selectedDisplay, setSelectedDisplay] = useState<string | undefined>();
-  // const [selectedInput, setSelectedInput] = useState<number | undefined>();
-  // const [selectedSecondInput, setSelectedSecondInput] = useState<
-  //   number | undefined
-  // >();
   const [config, setConfig] = useState<Partial<Config> | undefined>();
+  const [keybindInput, setKeybindInput] = useState<string>();
 
   function updateConfig(updatedValues: Partial<Config>) {
     window.electron?.ipcRenderer.sendMessage(
@@ -34,6 +55,7 @@ export default function App() {
     window.electron?.ipcRenderer.once('ipc-get-config', (arg) => {
       const asArg = arg as Partial<Config>;
       setConfig(asArg);
+      setKeybindInput(asArg.keybind);
     });
 
     window.electron?.ipcRenderer.sendMessage('ipc-get-config');
@@ -124,11 +146,21 @@ export default function App() {
           marginBottom: '20px',
         }}
         placeholder="Switching keybind"
-        value={config?.keybind}
-        onKeyUp={(event) => {
+        value={keybindInput}
+        onFocus={() => {
           updateConfig({
-            keybind: event.key === 'Backspace' ? undefined : event.key,
+            keybind: undefined,
           });
+        }}
+        onBlur={() => {
+          updateConfig({
+            keybind: keybindInput,
+          });
+        }}
+        onKeyDown={(event) => {
+          setKeybindInput(
+            event.key === 'Backspace' ? undefined : getAccelerator(event),
+          );
         }}
       />
 
