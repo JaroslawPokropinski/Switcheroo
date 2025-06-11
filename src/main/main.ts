@@ -11,8 +11,9 @@ import {
 } from 'electron';
 import ddcci from '@hensm/ddcci';
 import fs from 'fs';
+import logger from 'electron-log';
 import MenuBuilder from './menu';
-import { resolveHtmlPath } from './util';
+import { getAssetPath, resolveHtmlPath } from './util';
 import { Config } from '../types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -24,7 +25,10 @@ ipcMain.on('ipc-get-displays', async (event) => {
 
 let configPromise = fs.promises
   .readFile(path.join(app.getPath('userData'), 'config.json'), 'utf8')
-  .catch(() => '')
+  .catch(() => {
+    logger.warn('Config file not found, using defaults.');
+    return '{}';
+  })
   .then((content) => JSON.parse(content || '{}') as Partial<Config>);
 
 const CHANGE_INPUT = 0x60;
@@ -57,11 +61,18 @@ function applyConfig(config: Partial<Config>) {
   }, 1000);
 
   if (keybind && displayId && mainInput && secondInput) {
-    globalShortcut.register(keybind, async () => {
+    const result = globalShortcut.register(keybind, async () => {
       const target = currentInput !== secondInput ? secondInput : mainInput;
 
+      logger.info(
+        `Switching display ${displayId} input from ${currentInput} to ${target}`,
+      );
       ddcci.setVCP(displayId, CHANGE_INPUT, target);
     });
+
+    if (!result) {
+      logger.error(`Failed to register keybind: ${keybind}`);
+    }
   }
 
   app.setLoginItemSettings({
@@ -117,19 +128,11 @@ const installExtensions = async () => {
       extensions.map((name) => installer[name]),
       forceDownload,
     )
-    .catch(console.log);
+    .catch(logger.error);
 };
 
 const initDdc = () => {
-  configPromise.then(applyConfig).catch(console.error);
-};
-
-const getAssetPath = (...paths: string[]): string => {
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  return path.join(RESOURCES_PATH, ...paths);
+  configPromise.then(applyConfig).catch(logger.error);
 };
 
 const createWindow = async () => {
@@ -195,6 +198,22 @@ const createTray = () => {
       type: 'normal',
       click: openConfiguration,
     },
+    {
+      label: 'Open logs',
+      type: 'normal',
+      click: () => {
+        shell.openPath(`${app.getPath('userData')}/logs/`);
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Restart',
+      type: 'normal',
+      click: () => {
+        app.relaunch();
+        app.exit();
+      },
+    },
     { label: 'Exit', type: 'normal', click: () => app.quit() },
   ]);
 
@@ -212,6 +231,7 @@ app.on('window-all-closed', () => {});
 app
   .whenReady()
   .then(async () => {
+    logger.info('App is starting...');
     initDdc();
     const config = await configPromise;
     if (
@@ -230,4 +250,4 @@ app
       if (mainWindow === null) createWindow();
     });
   })
-  .catch(console.log);
+  .catch(logger.error);
