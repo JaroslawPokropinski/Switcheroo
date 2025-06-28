@@ -12,6 +12,7 @@ import {
 import ddcci from '@hensm/ddcci';
 import fs from 'fs';
 import logger from 'electron-log';
+import voicemeeter from 'voicemeeter-remote';
 import MenuBuilder from './menu';
 import { getAssetPath, resolveHtmlPath } from './util';
 import { Config } from '../types';
@@ -44,6 +45,8 @@ function applyConfig(config: Partial<Config>) {
     secondInput,
     keybind,
     runOnStart,
+    useVoicemeeter,
+    voicemeeterInputIndex,
   } = config;
 
   const inter = setInterval(async () => {
@@ -57,6 +60,21 @@ function applyConfig(config: Partial<Config>) {
       }
     } catch {
       // ignore error, most likely the display is not connected or changing input
+    }
+
+    if (
+      process.platform === 'win32' &&
+      useVoicemeeter &&
+      voicemeeterInputIndex
+    ) {
+      try {
+        voicemeeter.setStripMute(
+          voicemeeterInputIndex,
+          currentInput === mainInput,
+        );
+      } catch (err) {
+        logger.error('Failed to mute or unmute Voicemeeter strip:', err);
+      }
     }
   }, 1000);
 
@@ -105,6 +123,20 @@ ipcMain.on('ipc-update-config', async (event, arg) => {
     JSON.stringify(config),
   );
 });
+
+async function initVoicemeeter() {
+  if (process.platform !== 'win32') {
+    logger.warn('Voicemeeter is only supported on Windows, skipping...');
+    return;
+  }
+
+  try {
+    await voicemeeter.init();
+    voicemeeter.login();
+  } catch (err) {
+    logger.error('Voicemeeter initialization failed:', err);
+  }
+}
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -211,7 +243,7 @@ const createTray = () => {
       type: 'normal',
       click: () => {
         app.relaunch();
-        app.exit();
+        app.quit();
       },
     },
     { label: 'Exit', type: 'normal', click: () => app.quit() },
@@ -224,6 +256,9 @@ const createTray = () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  if (process.platform === 'win32') {
+    voicemeeter.logout();
+  }
 });
 
 app.on('window-all-closed', () => {});
@@ -233,6 +268,8 @@ app
   .then(async () => {
     logger.info('App is starting...');
     initDdc();
+    await initVoicemeeter();
+
     const config = await configPromise;
     if (
       !config.display ||

@@ -38,6 +38,7 @@ export default function App() {
   const [displays, setDisplays] = useState<string[]>();
   const [config, setConfig] = useState<Partial<Config> | undefined>();
   const [keybindInput, setKeybindInput] = useState<string>();
+  const isWin = window.electron?.ipcRenderer.getOs() === 'win32';
 
   function updateConfig(updatedValues: Partial<Config>) {
     window.electron?.ipcRenderer.sendMessage(
@@ -178,6 +179,41 @@ export default function App() {
       >
         Run on startup
       </Checkbox>
+
+      {isWin && (
+        <Checkbox
+          style={{
+            width: '100%',
+            marginBottom: '20px',
+          }}
+          checked={!!config?.useVoicemeeter}
+          onChange={(event) => {
+            updateConfig({
+              useVoicemeeter: event.target.checked,
+            });
+          }}
+        >
+          Use Voicemeeter
+        </Checkbox>
+      )}
+
+      {isWin && !!config?.useVoicemeeter && (
+        <Input
+          style={{
+            width: '100%',
+            marginBottom: '20px',
+          }}
+          placeholder="Voicemeeter input index"
+          type="number"
+          value={config?.voicemeeterInputIndex}
+          onChange={(event) => {
+            const value = parseInt(event.target.value, 10);
+            updateConfig({
+              voicemeeterInputIndex: Number.isNaN(value) ? undefined : value,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

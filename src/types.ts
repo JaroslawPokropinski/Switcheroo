@@ -4,4 +4,6 @@ export interface Config {
   secondInput: number;
   keybind: string;
   runOnStart: boolean;
+  useVoicemeeter: boolean;
+  voicemeeterInputIndex: number;
 }
