@@ -1,6 +1,6 @@
 {
   "name": "electron-react-boilerplate",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Switcheroo",
   "license": "MIT",
   "main": "./dist/main/main.js",
