@@ -39,6 +39,7 @@ export default function App() {
   const [config, setConfig] = useState<Partial<Config> | undefined>();
   const [keybindInput, setKeybindInput] = useState<string>();
   const isWin = window.electron?.ipcRenderer.getOs() === 'win32';
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   function updateConfig(updatedValues: Partial<Config>) {
     window.electron?.ipcRenderer.sendMessage(
@@ -52,6 +53,7 @@ export default function App() {
     }));
   }
 
+  // Load config from the main process
   useEffect(() => {
     window.electron?.ipcRenderer.once('ipc-get-config', (arg) => {
       const asArg = arg as Partial<Config>;
@@ -62,6 +64,7 @@ export default function App() {
     window.electron?.ipcRenderer.sendMessage('ipc-get-config');
   }, []);
 
+  // Load displays from the main process
   useEffect(() => {
     window.electron?.ipcRenderer.once('ipc-get-displays', (arg) => {
       if (!Array.isArray(arg)) {
@@ -74,8 +77,17 @@ export default function App() {
     window.electron?.ipcRenderer.sendMessage('ipc-get-displays');
   }, []);
 
+  // Resize the window to fit the content
+  useEffect(() => {
+    const size = containerRef.current?.getBoundingClientRect();
+    window.electron?.ipcRenderer.sendMessage('resize-window', {
+      height: size?.height && Math.min(size.height, 800),
+    });
+  }, [config]);
+
   return (
     <div
+      ref={containerRef}
       style={{
         display: 'flex',
         flexDirection: 'column',

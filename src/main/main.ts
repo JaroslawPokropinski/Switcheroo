@@ -13,6 +13,7 @@ import ddcci from '@hensm/ddcci';
 import fs from 'fs';
 import logger from 'electron-log';
 import voicemeeter from 'voicemeeter-remote';
+import z from 'zod';
 import MenuBuilder from './menu';
 import { getAssetPath, resolveHtmlPath } from './util';
 import { Config } from '../types';
@@ -105,6 +106,36 @@ function applyConfig(config: Partial<Config>) {
   };
 }
 
+ipcMain.on('resize-window', (_event, rawSize: unknown) => {
+  if (!mainWindow) {
+    logger.error('Failed to resize window: no window found.');
+    return;
+  }
+
+  const validatedSize = z
+    .object({
+      width: z.number().optional(),
+      height: z.number().optional(),
+    })
+    .safeParse(rawSize);
+
+  if (!validatedSize.success) {
+    logger.error(
+      'Failed to resize window: invalid arguments.',
+      validatedSize.error,
+    );
+    return;
+  }
+
+  const { width, height } = validatedSize.data;
+
+  mainWindow.setContentSize(
+    Math.ceil(width ?? mainWindow.getContentSize()[0]),
+    Math.ceil(height ?? mainWindow.getContentSize()[1]),
+    true,
+  );
+});
+
 ipcMain.on('ipc-get-config', async (event) => {
   event.reply('ipc-get-config', await configPromise);
 });
@@ -177,6 +208,7 @@ const createWindow = async () => {
     width: isDebug ? 340 + 580 : 340,
     height: 400,
     icon: getAssetPath('icon.png'),
+    resizable: false,
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')

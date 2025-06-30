@@ -5,7 +5,8 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels =
   | 'ipc-get-displays'
   | 'ipc-get-config'
-  | 'ipc-update-config';
+  | 'ipc-update-config'
+  | 'resize-window';
 
 const electronHandler = {
   ipcRenderer: {
