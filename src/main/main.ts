@@ -9,7 +9,6 @@ import {
   Tray,
   Menu,
 } from 'electron';
-import ddcci from '@hensm/ddcci';
 import fs from 'fs';
 import logger from 'electron-log';
 import voicemeeter from 'voicemeeter-remote';
@@ -17,12 +16,14 @@ import z from 'zod';
 import MenuBuilder from './menu';
 import { getAssetPath, resolveHtmlPath } from './util';
 import { Config } from '../types';
+import { getDdc } from './getDdc';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+const ddcci = getDdc();
 
 ipcMain.on('ipc-get-displays', async (event) => {
-  event.reply('ipc-get-displays', ddcci.getMonitorList());
+  event.reply('ipc-get-displays', ddcci.getDisplays());
 });
 
 let configPromise = fs.promises
@@ -59,8 +60,12 @@ function applyConfig(config: Partial<Config>) {
         const firstValue = readValue[0];
         currentInput = typeof firstValue === 'number' ? firstValue : null;
       }
-    } catch {
+    } catch (err) {
       // ignore error, most likely the display is not connected or changing input
+      logger.log(
+        'Failed to read DDC value',
+        err instanceof Error ? err.message : err,
+      );
     }
 
     if (

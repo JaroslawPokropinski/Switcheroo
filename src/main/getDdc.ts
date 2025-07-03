@@ -1,14 +1,25 @@
+import { IDdc } from './IDdc';
 import { linuxDdc } from './linuxDdc';
 import { windowsDdc } from './windowsDdc';
 
+let isInit = false;
+
+const ddcMap: Record<string, IDdc | undefined> = {
+  win32: windowsDdc,
+  linux: linuxDdc,
+};
+
 export function getDdc() {
-  if (process.platform === 'win32') {
-    return windowsDdc;
+  const ddc = ddcMap[process.platform];
+
+  if (!ddc) {
+    throw new Error(`Unsupported platform: ${process.platform}`);
   }
 
-  if (process.platform === 'linux') {
-    return linuxDdc;
+  if (!isInit) {
+    isInit = true;
+    ddc.init();
   }
 
-  throw new Error(`Unsupported platform: ${process.platform}`);
+  return ddc;
 }
