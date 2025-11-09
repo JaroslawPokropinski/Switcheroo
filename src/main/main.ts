@@ -11,7 +11,6 @@ import {
 } from 'electron';
 import fs from 'fs';
 import logger from 'electron-log';
-import voicemeeter from 'voicemeeter-remote';
 import z from 'zod';
 import MenuBuilder from './menu';
 import { getAssetPath, resolveHtmlPath } from './util';
@@ -47,8 +46,6 @@ function applyConfig(config: Partial<Config>) {
     secondInput,
     keybind,
     runOnStart,
-    useVoicemeeter,
-    voicemeeterInputIndex,
   } = config;
 
   const inter = setInterval(async () => {
@@ -66,21 +63,6 @@ function applyConfig(config: Partial<Config>) {
         'Failed to read DDC value',
         err instanceof Error ? err.message : err,
       );
-    }
-
-    if (
-      process.platform === 'win32' &&
-      useVoicemeeter &&
-      voicemeeterInputIndex
-    ) {
-      try {
-        voicemeeter.setStripMute(
-          voicemeeterInputIndex,
-          currentInput === mainInput,
-        );
-      } catch (err) {
-        logger.error('Failed to mute or unmute Voicemeeter strip:', err);
-      }
     }
   }, 1000);
 
@@ -159,20 +141,6 @@ ipcMain.on('ipc-update-config', async (event, arg) => {
     JSON.stringify(config),
   );
 });
-
-async function initVoicemeeter() {
-  if (process.platform !== 'win32') {
-    logger.warn('Voicemeeter is only supported on Windows, skipping...');
-    return;
-  }
-
-  try {
-    await voicemeeter.init();
-    voicemeeter.login();
-  } catch (err) {
-    logger.error('Voicemeeter initialization failed:', err);
-  }
-}
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -293,9 +261,6 @@ const createTray = () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  if (process.platform === 'win32') {
-    voicemeeter.logout();
-  }
 });
 
 app.on('window-all-closed', () => {});
@@ -305,7 +270,6 @@ app
   .then(async () => {
     logger.info('App is starting...');
     initDdc();
-    await initVoicemeeter();
 
     const config = await configPromise;
     if (
@@ -325,3 +289,7 @@ app
     });
   })
   .catch(logger.error);
+
+process.on('uncaughtException', (err) => {
+  logger.error(`uncaughtException: ${err.message}`);
+});

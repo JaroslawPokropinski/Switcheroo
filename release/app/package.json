@@ -1,5 +1,5 @@
 {
-  "name": "electron-react-boilerplate",
+  "name": "switcheroo",
   "version": "1.0.4",
   "description": "Switcheroo",
   "license": "MIT",
@@ -10,7 +10,6 @@
     "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
   },
   "dependencies": {
-    "@hensm/ddcci": "github:hensm/node-ddcci",
-    "voicemeeter-remote": "^0.5.0"
+    "@hensm/ddcci": "github:hensm/node-ddcci"
   }
 }
